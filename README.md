@@ -38,10 +38,10 @@ See [the paper](https://arxiv.org/abs/1910.03906) for further details.
   rPSMF to a multidimensional time series that contains outliers">
   <br>
   <br>
-  <span><i>Illustration of fitting rPSMF to a 20-dimensional time series with 
-  non-linear dynamics and t-distributed outliers. Blue lines are the observed 
-  data and yellow lines are unobserved future data. The red dashed line shows 
-  the predictions from our model.
+  <span><i>Illustration of using rPSMF to model a 20-dimensional time series 
+  with non-linear dynamics and t-distributed outliers. Blue lines are the 
+  observed data and yellow lines are unobserved future data. The red dashed 
+  line shows the predictions from our model.
   </i></span>
 </p>
 
@@ -51,12 +51,12 @@ The code in this repository is organized by experiment, where the experiments
 are numbered as they occur in the paper. The [Convergence](./Convergence) 
 directory contains the code for the convergence experiment in the appendix of 
 the paper. Experiment 4 is an additional test on real-world [gas sensor 
-data](https://archive.ics.uci.edu/ml/datasets/Gas+sensor+array+temperature+modulation),
-which illustrates the competitive performance of the proposed method on larger 
+data](https://archive.ics.uci.edu/ml/datasets/Gas+sensor+array+temperature+modulation)
+that confirms the competitive performance of the proposed method on larger 
 datasets.
 
 The accompanying Makefile can be used to reproduce Experiments 1, 3, and 4, by 
-simply running
+simply running:
 
 ```bash
 $ make Experiment1        # or Experiment3, or Experiment4
@@ -64,11 +64,12 @@ $ make Experiment1        # or Experiment3, or Experiment4
 
 These experiments will be run through a Python virtual environment that will 
 be automatically created with the required dependencies. For Experiments 3 and 
-4 the results are captured in LaTeX tables, which are automatically generated 
-when you run ``make Experiment3``.
+4 the results are captured in LaTeX tables that are automatically generated as 
+well.
 
 The code for Experiment 2 and the Convergence experiment are written in 
-Matlab, so require a Matlab installation to reproduce.
+Matlab, so require a Matlab installation to reproduce. See the readme files in 
+the corresponding directories for more information.
 
 ## Notes
 
