@@ -129,7 +129,7 @@ def prepare_output(
     out["missing_percentage"] = percentage
     out["missing_ratio"] = missRatio
     out["parameters"] = params
-    out['hashes'] = hashes
+    out["hashes"] = hashes
     out["results"] = results
 
     # hostname of the machine that created the result

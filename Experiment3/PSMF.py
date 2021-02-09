@@ -9,10 +9,12 @@ See the LICENSE file for copyright and licensing information.
 
 import numpy as np
 import time
+import datetime as dt
 
 from tqdm import trange
+from joblib import Memory
 
-from LondonAir_common import (
+from common import (
     RMSEM,
     compute_number_inside_bars,
     dump_output,
@@ -22,7 +24,19 @@ from LondonAir_common import (
     prepare_output,
 )
 
+MEMORY = Memory("./cache", verbose=0)
 
+
+def compute_Sinv(CM, PP, Rbar):
+    # woodbury, using inv, assuming Rbar diagonal
+    Ri = np.diag(1 / np.diag(Rbar))
+    RiC = Ri @ CM
+    Pi = np.linalg.inv(PP)
+    PiCRiC = Pi + CM.T @ RiC
+    return Ri - RiC @ np.linalg.inv(PiCRiC) @ RiC.T
+
+
+@MEMORY.cache
 def ProbabilisticSequentialMatrixFactorizer(
     Y, C, X, d, n, r, M, Mmiss, lam, V, Q, R, P, sig, Iter, YorgInt, Einit
 ):
@@ -38,67 +52,36 @@ def ProbabilisticSequentialMatrixFactorizer(
     YrecL = np.copy(Yrec)
     YrecH = np.copy(Yrec)
 
-    A = np.identity(r)
+    Id = np.eye(d)
 
     RunTimeStart = time.time()
 
     for i in range(0, Iter):
+        for t in range(n):
 
-        X0 = X[:, [n - 1]]
+            Mk = np.diag(M[:, t])
+            CM = Mk @ C
 
-        t = 0
-
-        MC = np.diag(
-            M[:, t]
-        )  # You need to write t, but not [t], as np.diag should take a one-dimensional array.
-        CM = MC @ C
-
-        Xp = A @ X0
-        PP = A @ P @ A.T + Q
-
-        Yrec[:, [t]] = C @ Xp
-
-        # Assumes R is diagonal
-        MRM = np.diag(np.diag(MC) * np.diag(R))
-        Rbar = MRM + Xp.T @ V @ Xp * np.eye(d)
-        CPinv = np.linalg.inv(CM @ PP @ CM.T + Rbar)
-        X[:, [t]] = Xp + PP @ CM.T @ CPinv @ (Y[:, [t]] - CM @ Xp)
-        P = PP - PP @ CM.T @ CPinv @ CM @ PP
-
-        eta_k = np.trace(CM @ PP @ CM.T + MRM) / d
-        Nt = Xp.T @ V @ Xp + eta_k
-
-        C = C + ((Y[:, [t]] - CM @ Xp) @ Xp.T @ V) / (Nt)
-        V = V - (V @ Xp @ Xp.T @ V) / (Nt)
-
-        YrecL[:, [t]] = Yrec[:, [t]] - sig * np.sqrt(Nt)
-        YrecH[:, [t]] = Yrec[:, [t]] + sig * np.sqrt(Nt)
-
-        for t in range(1, n):
-
-            MC = np.diag(
-                M[:, t]
-            )  # You need to write t, but not [t], np.diag should take a one-dimensional array.
-            CM = MC @ C
-
-            Xp = A @ X[:, [t - 1]]
-            PP = A @ P @ A.T + Q
+            Xp = X[:, [n - 1]] if t == 0 else X[:, [t - 1]]
+            PP = P + Q
 
             Yrec[:, [t]] = C @ Xp
 
-            MRM = np.diag(np.diag(MC) * np.diag(R))
-            Rbar = MRM + Xp.T @ V @ Xp * np.eye(d)
-            CPinv = np.linalg.inv(CM @ PP @ CM.T + Rbar)
+            # Assumes R is diagonal. Otherwise: MRM = Mk @ R @ Mk.T
+            MRM = np.diag(np.diag(Mk) * np.diag(R))
+            Rbar = MRM + Xp.T @ V @ Xp * Id
+            CPinv = compute_Sinv(CM, PP, Rbar)
             X[:, [t]] = Xp + PP @ CM.T @ CPinv @ (Y[:, [t]] - CM @ Xp)
             P = PP - PP @ CM.T @ CPinv @ CM @ PP
 
             eta_k = np.trace(CM @ PP @ CM.T + MRM) / d
             Nt = Xp.T @ V @ Xp + eta_k
-            YrecL[:, [t]] = Yrec[:, [t]] - sig * np.sqrt(Nt)
-            YrecH[:, [t]] = Yrec[:, [t]] + sig * np.sqrt(Nt)
 
             C = C + ((Y[:, [t]] - CM @ Xp) @ Xp.T @ V) / (Nt)
             V = V - (V @ Xp @ Xp.T @ V) / (Nt)
+
+            YrecL[:, [t]] = Yrec[:, [t]] - sig * np.sqrt(Nt)
+            YrecH[:, [t]] = Yrec[:, [t]] + sig * np.sqrt(Nt)
 
         Yrec2 = C @ X
 
@@ -164,7 +147,6 @@ def main():
         Y = np.copy(Ymiss)
         Y[np.isnan(Y)] = 0
 
-        log("[%04i/%04i]" % (i + 1, args.repeats))
         C = np.random.rand(d, r)
         X = np.random.rand(r, n)
 
@@ -201,6 +183,11 @@ def main():
         errors_full.append(ef[:, Iter].item())
         runtimes.append(rt[:, Iter].item())
         inside_bars.append(ib)
+
+        log(
+            "[%s] Finished step %04i of %04i"
+            % (dt.datetime.now().strftime("%c"), i + 1, args.repeats)
+        )
 
     params = {
         "r": r,

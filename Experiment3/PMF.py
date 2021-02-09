@@ -25,8 +25,9 @@ import time
 import numpy as np
 
 from tqdm import trange
+from joblib import Memory
 
-from LondonAir_common import (
+from common import (
     RMSEM,
     matrix_hash,
     parse_args,
@@ -35,7 +36,10 @@ from LondonAir_common import (
     dump_output,
 )
 
+MEMORY = Memory("./cache", verbose=0)
 
+
+@MEMORY.cache
 def pmf(
     Y,
     C,

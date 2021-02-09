@@ -9,10 +9,12 @@ See the LICENSE file for copyright and licensing information.
 
 import numpy as np
 import time
+import datetime as dt
 
 from tqdm import trange
+from joblib import Memory
 
-from LondonAir_common import (
+from common import (
     RMSEM,
     dump_output,
     matrix_hash,
@@ -21,7 +23,10 @@ from LondonAir_common import (
     prepare_output,
 )
 
+MEMORY = Memory("./cache", verbose=0)
 
+
+@MEMORY.cache
 def temporalRegularizedMF(
     Y, C, X, d, n, r, M, Mmiss, lam, R, Iter, YorgInt, Einit
 ):
@@ -35,46 +40,26 @@ def temporalRegularizedMF(
 
     Yrec = np.zeros([d, n])
 
-    A = np.identity(r)
+    Ir = np.identity(r)
 
     RunTimeStart = time.time()
 
     for i in range(0, Iter):
 
-        X0 = X[:, [n - 1]]
-
         gam1 = 1e-6
         nu = 2
         gam = gam1 / ((i + 1) ** 0.7)
 
-        t = 0
+        for t in range(n):
 
-        MC = np.diag(
-            M[:, t]
-        )  # You need to write t, but not [t], as np.diag should take a one-dimensional array.
-        CM = MC @ C
-
-        Xp = A @ X0
-
-        Yrec[:, [t]] = C @ Xp
-
-        CPinv = np.linalg.inv(CM.T @ CM + nu * np.identity(r))
-        X[:, [t]] = CPinv @ (nu * Xp + CM.T @ Y[:, [t]])
-
-        C = C + gam * (MC.T @ (Y[:, [t]] - CM @ Xp) @ Xp.T)
-
-        for t in range(1, n):
-
-            MC = np.diag(
-                M[:, t]
-            )  # You need to write t, but not [t], np.diag should take a one-dimensional array.
+            MC = np.diag(M[:, t])
             CM = MC @ C
 
-            Xp = A @ X[:, [t - 1]]
+            Xp = X[:, [n - 1]] if t == 0 else X[:, [t - 1]]
 
             Yrec[:, [t]] = C @ Xp
 
-            CPinv = np.linalg.inv(CM.T @ CM + nu * np.identity(r))
+            CPinv = np.linalg.inv(CM.T @ CM + nu * Ir)
             X[:, [t]] = CPinv @ (nu * Xp + CM.T @ Y[:, [t]])
 
             C = C + gam * (MC.T @ (Y[:, [t]] - CM @ Xp) @ Xp.T)
@@ -131,7 +116,6 @@ def main():
         Y = np.copy(Ymiss)
         Y[np.isnan(Y)] = 0
 
-        log("[%04i/%04i]" % (i + 1, args.repeats))
         C = np.random.rand(d, r)
         X = np.random.rand(r, n)
 
@@ -151,6 +135,11 @@ def main():
         errors_predict.append(ep[:, Iter].item())
         errors_full.append(ef[:, Iter].item())
         runtimes.append(rt[:, Iter].item())
+
+        log(
+            "[%s] Finished step %04i of %04i"
+            % (dt.datetime.now().strftime("%c"), i + 1, args.repeats)
+        )
 
     params = {"r": r, "rho": rho, "Iter": Iter}
     hashes = {"Y": Y_hashes, "C": C_hashes, "X": X_hashes}

@@ -25,9 +25,10 @@ import time
 import numpy as np
 
 from tqdm import trange
+from joblib import Memory
 from scipy.stats import wishart
 
-from LondonAir_common import (
+from common import (
     RMSEM,
     matrix_hash,
     parse_args,
@@ -35,6 +36,8 @@ from LondonAir_common import (
     prepare_output,
     dump_output,
 )
+
+MEMORY = Memory("./cache", verbose=0)
 
 
 def pmf(
@@ -114,6 +117,7 @@ def pred(w1_M1_sample, w1_P1_sample, probe_vec, mean_rating):
     return pred_out
 
 
+@MEMORY.cache
 def bpmf(
     Y,
     C,
@@ -316,6 +320,11 @@ def main():
     _range = trange if args.fancy else range
     log = print if not args.fancy else lambda *a, **kw: None
 
+    # Extract dimensions and set latent dimensionality
+    d, n = Yorig.shape
+    r = 10
+    Iter = 2
+
     # Initialize arrays to keep track of quantaties of interest
     errors_predict = []
     errors_full = []
@@ -323,11 +332,6 @@ def main():
     Y_hashes = []
     C_hashes = []
     X_hashes = []
-
-    # Extract dimensions and set latent dimensionality
-    d, n = Yorig.shape
-    r = 10
-    Iter = 2
 
     for i in _range(args.repeats):
         # Create the missing mask (missMask) and its inverse (M)
@@ -356,15 +360,19 @@ def main():
         # C,X as the other methods without saving/resetting state.
         rand_state = np.random.get_state()
 
-        [ep, ef, rt] = bpmf(
-            Y, C, X, d, n, r, M, missMask, YorigInt, Einit, epochs=Iter
-        )
+        try:
+            [ep, ef, rt] = bpmf(
+                Y, C, X, d, n, r, M, missMask, YorigInt, Einit, epochs=Iter
+            )
+            errors_predict.append(ep[:, Iter].item())
+            errors_full.append(ef[:, Iter].item())
+            runtimes.append(rt[:, Iter].item())
+        except np.linalg.LinAlgError:
+            errors_predict.append(float("nan"))
+            errors_full.append(float("nan"))
+            runtimes.append(float("nan"))
 
         np.random.set_state(rand_state)
-
-        errors_predict.append(ep[:, Iter].item())
-        errors_full.append(ef[:, Iter].item())
-        runtimes.append(rt[:, Iter].item())
 
     params = {"Iter": Iter, "r": r}
     hashes = {"Y": Y_hashes, "C": C_hashes, "X": X_hashes}

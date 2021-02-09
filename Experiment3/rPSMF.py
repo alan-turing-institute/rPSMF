@@ -9,10 +9,12 @@ See the LICENSE file for copyright and licensing information.
 
 import numpy as np
 import time
+import datetime as dt
 
 from tqdm import trange
+from joblib import Memory
 
-from LondonAir_common import (
+from common import (
     RMSEM,
     compute_number_inside_bars,
     dump_output,
@@ -22,7 +24,19 @@ from LondonAir_common import (
     prepare_output,
 )
 
+MEMORY = Memory("./cache", verbose=0)
 
+
+def compute_Sinv(CM, PP, Rbar):
+    # woodbury, using inv, assuming Rbar diagonal
+    Ri = np.diag(1 / np.diag(Rbar))
+    RiC = Ri @ CM
+    Pi = np.linalg.inv(PP)
+    PiCRiC = Pi + CM.T @ RiC
+    return Ri - RiC @ np.linalg.inv(PiCRiC) @ RiC.T
+
+
+@MEMORY.cache
 def robust_PSMF(
     Y,
     C,
@@ -64,83 +78,25 @@ def robust_PSMF(
         R = R0
         lmd = lambda0
 
-        X0 = X[:, [n - 1]]
-
-        t = 0
-
-        Mk = np.diag(M[:, t])
-        CM = Mk @ C
-
-        Xp = X0
-        PP = P + Q
-
-        Yrec[:, [t]] = C @ Xp
-
-        # NOTE: Assumes R is diagonal
-        MRM = np.diag(np.diag(Mk) * np.diag(R))
-        XVX = Xp.T @ V @ Xp
-        PPCM = PP @ CM.T
-        CMPPCM = CM @ PPCM
-
-        # Rbar = MRM + XVX * Mk
-        Rbar = MRM + XVX * Id  # replace Mk by Id otherwise singular
-        CPinv = np.linalg.inv(CMPPCM + Rbar)
-
-        diff = Y[:, [t]] - CM @ Xp
-        PPCMCPinv = PPCM @ CPinv
-
-        X[:, [t]] = Xp + PPCMCPinv @ diff
-        omega = (lmd + diff.T @ CPinv @ diff) / (lmd + d)
-        P = omega * (PP - PPCMCPinv @ CM @ PP)
-
-        eta_k = np.trace(MRM + CMPPCM) / d
-        Nk = XVX + eta_k
-
-        C = C + diff @ Xp.T @ V.T / Nk
-        U = XVX * Mk + eta_k * Id
-        Ui = np.diag(1.0 / np.diag(U))
-        phi = (lmd + diff.T @ Ui @ diff) / (lmd + d)
-        V = phi * (V - (V @ Xp @ Xp.T @ V) / Nk)
-
-        # We approximate the boundaries of the interval using (-sig*std,
-        # +sig*std), based on the normal distribution. This can be shown to
-        # have a negligle effect on performance compared to the exact version
-        # (kept below for reference), but is significantly faster.
-        sqU = np.sqrt(np.diag(U)).reshape(d, 1)
-        YrecL[:, [t]] = Yrec[:, [t]] - sig * sqU
-        YrecH[:, [t]] = Yrec[:, [t]] + sig * sqU
-        # AREA = scipy.stats.norm().cdf(sig) - scipy.stats.norm().cdf(-sig)
-        # YrecL[:, [t]], YrecH[:, [t]] = scipy.stats.t.interval(
-        #     AREA,
-        #     lmd,
-        #     loc=Yrec[:, [t]],
-        #     scale=np.sqrt(np.diag(U)).reshape(d, 1),
-        # )
-
-        Q = omega * Q
-        R = omega * R
-        lmd = lmd + d
-
-        for t in range(1, n):
+        for t in range(n):
 
             Mk = np.diag(M[:, t])
             CM = Mk @ C
 
-            Xp = X[:, [t - 1]]
+            Xp = X[:, [n - 1]] if t == 0 else X[:, [t - 1]]
             PP = P + Q
 
             Yrec[:, [t]] = C @ Xp
 
-            # Assumes R is diagonal
-            # MRM = Mk @ R @ Mk.T
+            # Assumes R is diagonal. Otherwise: MRM = Mk @ R @ Mk.T
             MRM = np.diag(np.diag(Mk) * np.diag(R))
             XVX = Xp.T @ V @ Xp
             PPCM = PP @ CM.T
             CMPPCM = CM @ PPCM
 
-            # Rbar = MRM + XVX * Mk
-            Rbar = MRM + XVX * Id  # replace Mk by Id otherwise singular
-            CPinv = np.linalg.inv(CMPPCM + Rbar)
+            # Replace Mk in Rbar = MRM + XVX * Mk by Id, otherwise singular
+            Rbar = MRM + XVX * Id
+            CPinv = compute_Sinv(CM, PP, Rbar)
 
             diff = Y[:, [t]] - CM @ Xp
             PPCMCPinv = PPCM @ CPinv
@@ -158,9 +114,21 @@ def robust_PSMF(
             phi = (lmd + diff.T @ Ui @ diff) / (lmd + d)
             V = phi * (V - (V @ Xp @ Xp.T @ V) / Nk)
 
+            # We approximate the boundaries of the interval using (-sig*std, 
+            # +sig*std), based on the normal distribution. This can be shown to 
+            # have a negligle effect on performance compared to the exact 
+            # version (kept below for reference), but is significantly faster.
             sqU = np.sqrt(np.diag(U)).reshape(d, 1)
             YrecL[:, [t]] = Yrec[:, [t]] - sig * sqU
             YrecH[:, [t]] = Yrec[:, [t]] + sig * sqU
+            # AREA can be precomputed
+            # AREA = scipy.stats.norm().cdf(sig) - scipy.stats.norm().cdf(-sig)
+            # YrecL[:, [t]], YrecH[:, [t]] = scipy.stats.t.interval(
+            #     AREA,
+            #     lmd,
+            #     loc=Yrec[:, [t]],
+            #     scale=np.sqrt(np.diag(U)).reshape(d, 1),
+            # )
 
             Q = omega * Q
             R = omega * R
@@ -233,7 +201,6 @@ def main():
         Y = np.copy(Ymiss)
         Y[np.isnan(Y)] = 0
 
-        log("[%04i/%04i]" % (i + 1, args.repeats))
         C = np.random.rand(d, r)
         X = np.random.rand(r, T)
 
@@ -266,10 +233,24 @@ def main():
             Einit,
         )
 
-        errors_predict.append(ep[:, Iter].item())
-        errors_full.append(ef[:, Iter].item())
-        runtimes.append(rt[:, Iter].item())
-        inside_bars.append(ib)
+        error_pred = ep[:, Iter].item()
+        error_full = ef[:, Iter].item()
+        if np.isnan(error_pred) or np.isnan(error_full):
+            runtime = float('nan')
+            inside_bar = float('nan')
+        else:
+            runtime = rt[:, Iter].item()
+            inside_bar = ib
+
+        errors_predict.append(error_pred)
+        errors_full.append(error_full)
+        runtimes.append(runtime)
+        inside_bars.append(inside_bar)
+
+        log(
+            "[%s] Finished step %04i of %04i"
+            % (dt.datetime.now().strftime("%c"), i + 1, args.repeats)
+        )
 
     params = {
         "r": r,
