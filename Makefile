@@ -149,7 +149,7 @@ $(TARGETS_REC_PSMF) &: \
 # Experiment 3 - Imputation #
 #############################
 
-.PHONY: ExperimentImpute output-dir table-dir
+.PHONY: ExperimentImpute impute-output impute-tables
 
 IMPUTE_METHODS=MLESMF TMF PSMF rPSMF PMF BPMF
 IMPUTE_DATA=LondonAir_NO2 \
