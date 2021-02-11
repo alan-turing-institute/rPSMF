@@ -1,167 +1,203 @@
-# Makefile for rPSMF Experiments
+# Makefile for PSMF project
 #
-# Copyright & License: See LICENSE file
-#
+# For copyright & license information please see the README file.
 
-SHELL := bash
+SHELL       := bash
 .SHELLFLAGS := -eu -o pipefail -c
-MAKEFLAGS += --no-builtin-rules
+MAKEFLAGS   += --no-builtin-rules
 
-EXP_DIR_1=./Experiment1
-EXP_DIR_3=./Experiment3
-EXP_DIR_4=./Experiment4
+EXP_DIR_SYN     = ./ExperimentSynthetic
+EXP_DIR_REC     = ./ExperimentRecursive
+EXP_DIR_IMPUTE  = ./ExperimentImpute
+EXP_DIR_BEIJING = ./ExperimentBeijing
 
-VENV_DIR=./venv
+PKG_DIR   = ./pypsmf
+PKG_FILES = $(shell find $(PKG_DIR) -type f -iname '*.py')
+VENV_DIR  = ./venv
 
 .PHONY: all
 
-all: Experiment1 Experiment3 Experiment4
+all: ExperimentSynthetic ExperimentImpute ExperimentBeijing ExperimentRecursive
 
-################
-# Experiment 1 #
-################
+############################
+# Experiment 1 - Synthetic #
+############################
 
-.PHONY: Experiment1 clean_Experiment1
+.PHONY: ExperimentSynthetic ExperimentSynthetic_psmf ExperimentSynthetic_rpsmf \
+	syn_output
 
-EXPERIMENT1_OUTPUT_PSMF = $(EXP_DIR_1)/output/paper_plot_psmf_fit.pdf \
-			  $(EXP_DIR_1)/output/paper_plot_psmf_bases.pdf \
-			  $(EXP_DIR_1)/output/paper_plot_psmf_loss.pdf
+ExperimentSynthetic: ExperimentSynthetic_psmf ExperimentSynthetic_rpsmf
 
-EXPERIMENT1_OUTPUT_RPSMF = $(EXP_DIR_1)/output/paper_plot_rpsmf_fit.pdf \
-			   $(EXP_DIR_1)/output/paper_plot_rpsmf_bases.pdf \
-			   $(EXP_DIR_1)/output/paper_plot_rpsmf_loss.pdf
+syn_output:
+	mkdir -p $(EXP_DIR_SYN)/output
 
-Experiment1: Experiment1_psmf Experiment1_rpsmf
+TARGETS_SYN_PSMF = \
+	$(EXP_DIR_SYN)/output/psmf_fit.pdf \
+	$(EXP_DIR_SYN)/output/psmf_bases.pdf \
+	$(EXP_DIR_SYN)/output/psmf_cost_y.pdf \
+	$(EXP_DIR_SYN)/output/psmf_cost_theta.pdf
 
-Experiment1_psmf: $(EXPERIMENT1_OUTPUT_PSMF)
+TARGETS_SYN_RPSMF = \
+	$(EXP_DIR_SYN)/output/rpsmf_fit.pdf \
+	$(EXP_DIR_SYN)/output/rpsmf_bases.pdf \
+	$(EXP_DIR_SYN)/output/rpsmf_cost_y.pdf \
+	$(EXP_DIR_SYN)/output/rpsmf_cost_theta.pdf
 
-Experiment1_rpsmf: $(EXPERIMENT1_OUTPUT_RPSMF)
+TARGETS_SYN = $(TARGETS_SYN_PSMF) $(TARGETS_SYN_RPSMF)
 
-$(EXPERIMENT1_OUTPUT_PSMF) &: $(EXP_DIR_1)/synthetic_psmf.py \
-	$(EXP_DIR_1)/data.py $(EXP_DIR_1)/tracking.py \
-	$(EXP_DIR_1)/psmf.py | venv
+ExperimentSynthetic_psmf: $(TARGETS_SYN_PSMF)
+
+ExperimentSynthetic_rpsmf: $(TARGETS_SYN_RPSMF)
+
+$(TARGETS_SYN_PSMF) &: \
+	$(EXP_DIR_SYN)/synthetic_psmf.py \
+	$(EXP_DIR_SYN)/data.py | syn_output venv
 	source $(VENV_DIR)/bin/activate && python $< -v -s 35853 \
-		--output-fit $(EXP_DIR_1)/output/paper_plot_psmf_fit.pdf \
-		--output-bases $(EXP_DIR_1)/output/paper_plot_psmf_bases.pdf \
-		--output-cost $(EXP_DIR_1)/output/paper_plot_psmf_cost.pdf
+		--output-fit $(EXP_DIR_SYN)/output/psmf_fit.pdf \
+		--output-bases $(EXP_DIR_SYN)/output/psmf_bases.pdf \
+		--output-cost-y $(EXP_DIR_SYN)/output/psmf_cost_y.pdf \
+		--output-cost-theta $(EXP_DIR_SYN)/output/psmf_cost_theta.pdf
 
-$(EXPERIMENT1_OUTPUT_RPSMF) &: $(EXP_DIR_1)/synthetic_rpsmf.py \
-	$(EXP_DIR_1)/data.py $(EXP_DIR_1)/tracking.py \
-	$(EXP_DIR_1)/rpsmf.py $(EXP_DIR_1)/psmf.py | venv
+$(TARGETS_SYN_RPSMF) &: \
+	$(EXP_DIR_SYN)/synthetic_rpsmf.py \
+	$(EXP_DIR_SYN)/data.py | syn_output venv
 	source $(VENV_DIR)/bin/activate && python $< -v -s 35833 \
-		--output-fit $(EXP_DIR_1)/output/paper_plot_rpsmf_fit.pdf \
-		--output-bases $(EXP_DIR_1)/output/paper_plot_rpsmf_bases.pdf \
-		--output-cost $(EXP_DIR_1)/output/paper_plot_rpsmf_cost.pdf
+		--output-fit $(EXP_DIR_SYN)/output/rpsmf_fit.pdf \
+		--output-bases $(EXP_DIR_SYN)/output/rpsmf_bases.pdf \
+		--output-cost-y $(EXP_DIR_SYN)/output/rpsmf_cost_y.pdf \
+		--output-cost-theta $(EXP_DIR_SYN)/output/rpsmf_cost_theta.pdf
 
-clean_Experiment1:
-	rm -f $(EXPERIMENT1_OUTPUT_PSMF)
-	rm -f $(EXPERIMENT1_OUTPUT_RPSMF)
+######################################
+# Experiment 1 - Beijing Temperature #
+######################################
 
-################
-# Experiment 3 #
-################
+.PHONY: ExperimentBeijing ExperimentBeijingPeriodic ExperimentBeijingRandom \
+	beijing_output
 
-.PHONY: Experiment3 Experiment3_tables clean_Experiment3
+ExperimentBeijing: ExperimentBeijingPeriodic ExperimentBeijingRandom
 
-Experiment3: Experiment3_tables
+beijing_output:
+	mkdir -p $(EXP_DIR_BEIJING)/output
 
-EXP3_PERC=20 30 40
-EXP3_METHODS=MLESMF TMF PSMF rPSMF PMF BPMF
-EXP3_POLLUTANTS=NO2 PM10 PM25
-EXP3_REPEATS=1000
-EXP3_TARGETS=
+TARGETS_BEIJING_PERIODIC = \
+	$(EXP_DIR_BEIJING)/output/periodic_bases.pdf \
+	$(EXP_DIR_BEIJING)/output/periodic_cost.pdf \
+	$(EXP_DIR_BEIJING)/output/periodic_fit.pdf
 
-exp3-output-dir:
-	mkdir -p $(EXP_DIR_3)/output
+TARGETS_BEIJING_RANDOM = \
+	$(EXP_DIR_BEIJING)/output/randomwalk_bases.pdf \
+	$(EXP_DIR_BEIJING)/output/randomwalk_cost.pdf \
+	$(EXP_DIR_BEIJING)/output/randomwalk_fit.pdf
 
-exp3-table-dir:
-	mkdir -p $(EXP_DIR_3)/tables
+TARGETS_BEIJING = $(TARGETS_BEIJING_PERIODIC) $(TARGETS_BEIJING_RANDOM)
 
+ExperimentBeijingPeriodic: $(TARGETS_BEIJING_PERIODIC)
 
-## generate rules for experiment 3 for all methods/datasets/missing percentages
+ExperimentBeijingRandom: $(TARGETS_BEIJING_RANDOM)
 
-define RunLondonAir
-EXP3_TARGETS += $(EXP_DIR_3)/output/$(1)_$(2)_$(3).json
-
-$(EXP_DIR_3)/output/$(1)_$(2)_$(3).json: $(EXP_DIR_3)/data/LondonAir_$(1).csv \
-	$(EXP_DIR_3)/LondonAir_$(3).py | exp3-output-dir venv
+$(TARGETS_BEIJING_PERIODIC) &: \
+	$(EXP_DIR_BEIJING)/beijing_psmf.py \
+	$(EXP_DIR_BEIJING)/beijing_temperature.csv | beijing_output venv
 	source $(VENV_DIR)/bin/activate && \
-		python $(EXP_DIR_3)/LondonAir_$(3).py -i $$< -o $$@ -p $(2) \
-		-s 123 -r $(EXP3_REPEATS) -f
+		python $< -i $(EXP_DIR_BEIJING)/beijing_temperature.csv \
+		--figure periodic -v \
+		--output-bases $(EXP_DIR_BEIJING)/output/periodic_bases.pdf \
+		--output-cost $(EXP_DIR_BEIJING)/output/periodic_cost.pdf \
+		--output-fit $(EXP_DIR_BEIJING)/output/periodic_fit.pdf
+
+$(TARGETS_BEIJING_RANDOM) &: \
+	$(EXP_DIR_BEIJING)/beijing_psmf.py \
+	$(EXP_DIR_BEIJING)/beijing_temperature.csv | beijing_output venv
+	source $(VENV_DIR)/bin/activate && \
+		python $< -i $(EXP_DIR_BEIJING)/beijing_temperature.csv \
+		--figure random_walk -v \
+		--output-bases $(EXP_DIR_BEIJING)/output/randomwalk_bases.pdf \
+		--output-cost $(EXP_DIR_BEIJING)/output/randomwalk_cost.pdf \
+		--output-fit $(EXP_DIR_BEIJING)/output/randomwalk_fit.pdf
+
+############################
+# Experiment 1 - Recursive #
+############################
+
+.PHONY: ExperimentRecursive ExperimentRecursive_psmf rec_output
+
+ExperimentRecursive: ExperimentRecursive_psmf
+
+rec_output:
+	mkdir -p $(EXP_DIR_REC)/output
+
+TARGETS_REC_PSMF = \
+	$(EXP_DIR_REC)/output/psmf_fit.pdf \
+	$(EXP_DIR_REC)/output/psmf_bases.pdf \
+	$(EXP_DIR_REC)/output/psmf_cost_y.pdf \
+	$(EXP_DIR_REC)/output/psmf_cost_theta.pdf
+
+TARGETS_REC = $(TARGETS_REC_PSMF)
+
+ExperimentRecursive_psmf: $(TARGETS_REC_PSMF)
+
+$(TARGETS_REC_PSMF) &: \
+	$(EXP_DIR_REC)/synthetic_recursive_psmf.py \
+	$(EXP_DIR_REC)/data.py | rec_output venv
+	source $(VENV_DIR)/bin/activate && python $< -v -s 5535 \
+		--output-fit $(EXP_DIR_REC)/output/psmf_fit.pdf \
+		--output-bases $(EXP_DIR_REC)/output/psmf_bases.pdf \
+		--output-cost-y $(EXP_DIR_REC)/output/psmf_cost_y.pdf \
+		--output-cost-theta $(EXP_DIR_REC)/output/psmf_cost_theta.pdf
+
+#############################
+# Experiment 3 - Imputation #
+#############################
+
+.PHONY: ExperimentImpute output-dir table-dir
+
+IMPUTE_METHODS=MLESMF TMF PSMF rPSMF PMF BPMF
+IMPUTE_DATA=LondonAir_NO2 \
+	    LondonAir_PM10 \
+	    LondonAir_PM25 \
+	    GasSensor_20160930_203718 \
+	    sp500_closing_prices
+IMPUTE_REPEATS=100
+IMPUTE_PERCENTAGE=20 30 40
+IMPUTE_METRICS=imputation coverage
+
+impute-output:
+	mkdir -p $(EXP_DIR_IMPUTE)/output
+
+impute-tables:
+	mkdir -p $(EXP_DIR_IMPUTE)/tables
+
+define ExpImpute
+TARGETS_IMPUTE += $(EXP_DIR_IMPUTE)/output/$(1)_$(2)_$(3).json
+
+$(EXP_DIR_IMPUTE)/output/$(1)_$(2)_$(3).json: $(EXP_DIR_IMPUTE)/data/$(1).csv \
+	$(EXP_DIR_IMPUTE)/$(3).py | impute-output venv
+	source $(VENV_DIR)/bin/activate && \
+		python $(EXP_DIR_IMPUTE)/$(3).py -i $$< -o $$@ -p $(2) -s 123 \
+		-r $(IMPUTE_REPEATS) -f
 endef
 
-$(foreach perc,$(EXP3_PERC),\
-$(foreach method,$(EXP3_METHODS),\
-$(foreach pollutant,$(EXP3_POLLUTANTS),\
-	$(eval $(call RunLondonAir,$(pollutant),$(perc),$(method)))\
-)))
+define ExpImputeTable
+TABLES_IMPUTE += $(EXP_DIR_IMPUTE)/tables/table_$(1)_$(2).tex
 
-## tables for experiment 3
-
-Experiment3_tables: $(EXP_DIR_3)/tables/table_imputation.tex \
-	$(EXP_DIR_3)/tables/table_coverage.tex
-
-$(EXP_DIR_3)/tables/table_%.tex: $(EXP_DIR_3)/LondonAir_table_%.py \
-	$(EXP3_TARGETS) | exp3-table-dir
-	python $< -i $(EXP_DIR_3)/output -o $@
-
-## clean up for experiment 3
-
-clean_Experiment3:
-	rm -rf $(EXP_DIR_3)/output
-	rm -rf $(EXP_DIR_3)/tables
-
-################
-# Experiment 4 #
-################
-
-.PHONY: Experiment4 Experiment4_tables clean_Experiment4
-
-Experiment4: Experiment4_tables
-
-EXP4_PERC=30
-EXP4_METHODS=MLESMF TMF PSMF rPSMF PMF BPMF
-EXP4_DAYS=20160930_203718
-EXP4_REPEATS=100
-EXP4_TARGETS=
-
-exp4-output-dir:
-	mkdir -p $(EXP_DIR_4)/output
-
-exp4-table-dir:
-	mkdir -p $(EXP_DIR_4)/tables
-
-## generate targets for experiment 4
-
-define RunGasSensor
-EXP_4_TARGETS += $(EXP_DIR_4)/output/$(1)_$(2)_$(3).json
-
-$(EXP_DIR_4)/output/$(1)_$(2)_$(3).json: $(EXP_DIR_4)/data/GasSensor_$(1).csv \
-	$(EXP_DIR_4)/GasSensor_$(3).py | exp4-output-dir venv
+$(EXP_DIR_IMPUTE)/tables/table_$(1)_$(2).tex: \
+	$(EXP_DIR_IMPUTE)/table_$(1).py $(TARGETS_IMPUTE) | impute-tables venv
 	source $(VENV_DIR)/bin/activate && \
-		python $(EXP_DIR_4)/GasSensor_$(3).py -i $$< -o $$@ -p $(2) \
-		-s 123 -r $(EXP4_REPEATS) -f
+		python $$< -i $(EXP_DIR_IMPUTE)/output -o $$@ -p $(2)
 endef
 
-$(foreach perc,$(EXP4_PERC),\
-$(foreach method,$(EXP4_METHODS),\
-$(foreach day,$(EXP4_DAYS),\
-	$(eval $(call RunGasSensor,$(day),$(perc),$(method)))\
+$(foreach perc,$(IMPUTE_PERCENTAGE),\
+$(foreach method,$(IMPUTE_METHODS),\
+$(foreach dataset,$(IMPUTE_DATA),\
+$(eval $(call ExpImpute,$(dataset),$(perc),$(method)))\
 )))
 
-## tables for experiment 4
+$(foreach perc,$(IMPUTE_PERCENTAGE),\
+$(foreach metric,$(IMPUTE_METRICS),\
+$(eval $(call ExpImputeTable,$(metric),$(perc)))\
+))
 
-Experiment4_tables: $(EXP_DIR_4)/tables/table_imputation.tex \
-	$(EXP_DIR_4)/tables/table_coverage.tex
-
-$(EXP_DIR_4)/tables/table_%.tex: $(EXP_DIR_4)/GasSensor_table_%.py \
-	$(EXP4_TARGETS) | exp4-table-dir
-
-## clean up for experiment 4
-
-clean_Experiment4:
-	rm -rf $(EXP_DIR_4)/output
-	rm -rf $(EXP_DIR_4)/tables
+ExperimentImpute: $(TARGETS_IMPUTE) $(TABLES_IMPUTE)
 
 ##############
 # Virtualenv #
@@ -171,19 +207,29 @@ clean_Experiment4:
 
 venv: $(VENV_DIR)/bin/activate requirements.txt
 
-$(VENV_DIR)/bin/activate: requirements.txt
-	test -d $(VENV_DIR) || virtualenv $(VENV_DIR)
-	source $(VENV_DIR)/bin/activate && pip install -r ./requirements.txt
+$(VENV_DIR)/bin/activate: requirements.txt $(PKG_FILES)
+	test -d $(VENV_DIR) || python -m venv $(VENV_DIR)
+	source $(VENV_DIR)/bin/activate && \
+		pip install -r ./requirements.txt && pip install -e $(PKG_DIR)
 	touch $(VENV_DIR)/bin/activate
-
-clean_venv:
-	rm -rf $(VENV_DIR)
 
 ############
 # Clean up #
 ############
 
-.PHONY: clean
+.PHONY: clean clean_venv
 
-clean: clean_venv clean_Experiment1
+check_clean:
+	@echo -n "Are you sure? [y/N]" && read ans && [ $$ans == y ]
 
+clean: clean_venv clean_results
+
+clean_results: check_clean
+	rm -f $(TARGETS_SYN)
+	rm -f $(TARGETS_REC)
+	rm -f $(TARGETS_BEIJING)
+	rm -f $(TARGETS_IMPUTE)
+	rm -f $(TABLES_IMPUTE)
+
+clean_venv:
+	rm -rf $(VENV_DIR)
