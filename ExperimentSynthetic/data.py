@@ -1,12 +1,5 @@
 # -*- coding: utf-8 -*-
 
-"""PSMF Experiment 1 - Generate data
-
-This file is part of the PSMF codebase.
-See the LICENSE file for copyright and licensing information.
-
-"""
-
 import autograd.numpy as np
 
 
