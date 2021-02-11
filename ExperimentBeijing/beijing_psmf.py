@@ -104,7 +104,7 @@ def main():
     theta_scale = 0.1
     c_scale = v_scale = 5
     p_scale = q_scale = r_scale = 1
-    n_iter = 200
+    n_iter = 100
 
     if args.figure == "periodic":
         nonlinearity = FourierBasis(rank=rank, N=1)
@@ -151,8 +151,9 @@ def main():
         "cost_y": args.output_cost,
         "fit": args.output_fit,
     }
-    psmf.figures_save(y, n_pred, T, output_files=output_files, 
-            fit_figsize=(8,2))
+    psmf.figures_save(
+        y, n_pred, T, output_files=output_files, fit_figsize=(8, 2)
+    )
 
 
 if __name__ == "__main__":
