@@ -12,24 +12,33 @@ import os
 
 METHODS = ["PSMF", "rPSMF", "MLESMF", "TMF", "PMF", "BPMF"]
 PROB_METHODS = ["PSMF", "rPSMF", "MLESMF"]
-POLLUTANTS = ["NO2", "PM10", "PM25"]
-PERCENTAGES = [20, 30, 40]
+DATASETS = [
+    "LondonAir_NO2",
+    "LondonAir_PM10",
+    "LondonAir_PM25",
+    "sp500_closing_prices",
+    "GasSensor_20160930_203718",
+]
+PERCENTAGES_APP = [20, 40]
+PERCENTAGE_MAIN = 30
 
+DATASET_NAMES = {
+    "LondonAir_NO2": "NO$_2$",
+    "LondonAir_PM10": "PM10",
+    "LondonAir_PM25": "PM25",
+    "sp500_closing_prices": "S\&P500",
+    "GasSensor_20160930_203718": "Gas",
+}
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-i",
-        "--input-dir",
-        help="Input directory with result files",
-        required=True,
-    )
-    parser.add_argument(
-        "-o", "--output-file", help="Output file for the table", required=True
-    )
-    return parser.parse_args()
+PREAMBLE = [
+    "\\documentclass[11pt, preview=true]{standalone}",
+    "\\usepackage{booktabs}",
+    "\\usepackage{multirow}",
+    "\\usepackage{amsmath}",
+    "\\begin{document}",
+]
+EPILOGUE = ["\\end{document}"]
 
-
-def make_filepath(method, pol, perc, result_dir):
-    filename = "%s_%i_%s.json" % (pol, perc, method)
+def make_filepath(method, dataset, perc, result_dir):
+    filename = "%s_%i_%s.json" % (dataset, perc, method)
     return os.path.join(result_dir, filename)

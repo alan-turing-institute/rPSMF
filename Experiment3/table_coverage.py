@@ -8,31 +8,89 @@ See the LICENSE file for copyright and licensing information.
 
 """
 
+import argparse
 import json
 import numpy as np
 import os
 import sys
 
-from LondonAir_table_common import (
+from table_common import (
     PROB_METHODS,
-    POLLUTANTS,
-    PERCENTAGES,
-    parse_args,
+    PERCENTAGES_APP,
+    DATASETS,
+    DATASET_NAMES,
+    PREAMBLE,
+    EPILOGUE,
     make_filepath,
 )
+
+FILE_LENGTHS = set()
+FILES_MISSING = set()
+FILES_NAN = set()
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-i",
+        "--input-dir",
+        help="Input directory with result files",
+        required=True,
+    )
+    parser.add_argument(
+        "-o", "--output-file", help="Output file for the table", required=True
+    )
+    parser.add_argument(
+        "-p",
+        "--percentage",
+        help="Missing percentage to ues",
+        required=True,
+        type=int,
+        choices=[20, 30, 40],
+    )
+    parser.add_argument(
+        "-s",
+        "--standalone",
+        help="Build a standalone latex document",
+        action="store_true",
+    )
+    return parser.parse_args()
+
+
+def warn_missing(path):
+    if path in FILES_MISSING:
+        return
+    print(f"Warning: result file {path} not found.", file=sys.stderr)
+    FILES_MISSING.add(path)
+
+
+def warn_nan(path, count):
+    if path in FILES_NAN:
+        return
+    print(
+        f"Warning: result file {path} contains {count} NaN value(s)",
+        file=sys.stderr,
+    )
+    FILES_NAN.add(path)
 
 
 def get_mean_coverage(path, method):
     with open(path, "r") as fp:
         data = json.load(fp)
     assert data["method"] == method
-    return np.mean(data["results"]["inside_sig"])
+    values = data["results"]["inside_sig"]
+    FILE_LENGTHS.add(len(values))
+    assert len(FILE_LENGTHS) == 1
+    if np.any(np.isnan(values)):
+        warn_nan(path, np.sum(np.isnan(values)))
+        return np.nanmean(values)
+    return np.mean(values)
 
 
-def get_coverage(method, pol, perc, result_dir):
-    path = make_filepath(method, pol, perc, result_dir)
+def get_coverage(method, dataset, perc, result_dir):
+    path = make_filepath(method, dataset, perc, result_dir)
     if not os.path.exists(path):
-        print("Warning: result file '%s' not found." % path, file=sys.stderr)
+        warn_missing(path)
         return "TODO"
 
     cov = get_mean_coverage(path, method)
@@ -42,7 +100,7 @@ def get_coverage(method, pol, perc, result_dir):
         if other_method == method:
             continue
 
-        other_path = make_filepath(other_method, pol, perc, result_dir)
+        other_path = make_filepath(other_method, dataset, perc, result_dir)
         if not os.path.exists(other_path):
             continue
 
@@ -54,48 +112,41 @@ def get_coverage(method, pol, perc, result_dir):
     return "%.2f" % cov
 
 
-def build_tex_table(result_dir):
+def build_table(result_dir, perc):
     tex = []
     tex.append("%% DO NOT EDIT - AUTOMATICALLY GENERATED FROM RESULTS!")
     tex.append("%% This table requires booktabs and multirow!")
+    tex.append(f"%% Table for missing percentage {perc}")
 
-    methname = lambda m: "MLE-SMF" if m == "MLESMF" else m
-    polname = lambda p: "NO$_2$" if p == "NO2" else p
-    mc3 = lambda s: "\\multicolumn{3}{c}{%s}" % s
+    names = {"MLESMF": "MLE-SMF", "PMF": "PMF*", "BPMF": "BPMF*"}
+    methname = lambda m: names.get(m, m)
+    dataset_name = lambda d: DATASET_NAMES.get(d, d)
 
-    tex.append("\\begin{tabular}{lccccccccc}")
+    fmt = "l" + "c" * len(DATASETS)
+    tex.append("\\begin{tabular}{%s}" % fmt)
     tex.append("\\toprule")
-    superheader = (
-        " & ".join([""] + [mc3(polname(pol)) for pol in POLLUTANTS])
-        + "\\\\ \n"
-        + "\\cmidrule(lr){2-4} \\cmidrule(lr){5-7} \\cmidrule(lr){8-10}"
+    header = (
+        " & ".join([""] + [dataset_name(dset) for dset in DATASETS]) + " \\\\"
     )
-    tex.append(superheader)
-    subheader = (
-        " & ".join([""] + ["%i\%%" % i for i in PERCENTAGES] * 3)
-        + " \\\\ "
-        + "\n"
-        + "\\cmidrule(lr){2-4} \\cmidrule(lr){5-7} \\cmidrule(lr){8-10}"
-    )
-    tex.append(subheader)
+    tex.append(header)
+    tex.append("\\cmidrule(lr){2-%i}" % (len(DATASETS) + 1))
 
     for method in PROB_METHODS:
-        row = [methname(method)]
-        for pol in POLLUTANTS:
-            for perc in PERCENTAGES:
-                row.append(get_coverage(method, pol, perc, result_dir))
-
-        tex.append(" & ".join(row) + "\\\\")
+        vrow = [methname(method)]
+        for dataset in DATASETS:
+            value = get_coverage(method, dataset, perc, result_dir)
+            vrow.append(value)
+        tex.append(" & ".join(vrow) + " \\\\")
 
     tex.append("\\bottomrule")
     tex.append("\\end{tabular}")
-
     return tex
 
 
 def main():
     args = parse_args()
-    tex = build_tex_table(args.input_dir)
+    tex = build_table(args.input_dir, args.percentage)
+    tex = PREAMBLE + tex + EPILOGUE if args.standalone else tex
     with open(args.output_file, "w") as fp:
         fp.write("\n".join(tex))
 
