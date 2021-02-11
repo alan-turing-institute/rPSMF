@@ -47,29 +47,26 @@ See [the paper](https://arxiv.org/abs/1910.03906) for further details.
 
 ## Usage
 
-The code in this repository is organized by experiment, where the experiments 
-are numbered as they occur in the paper. The [Convergence](./Convergence) 
-directory contains the code for the convergence experiment in the appendix of 
-the paper. Experiment 4 is an additional test on real-world [gas sensor 
-data](https://archive.ics.uci.edu/ml/datasets/Gas+sensor+array+temperature+modulation)
-that confirms the competitive performance of the proposed method on larger 
-datasets.
+The code in this repository is organized by experiment. The 
+[Convergence](./Convergence) directory contains the code for the convergence 
+experiment in the appendix of the paper.
 
-The accompanying Makefile can be used to reproduce Experiments 1, 3, and 4, by 
-simply running:
+The accompanying Makefile can be used to reproduce the experiments by simply 
+running
 
 ```bash
-$ make Experiment1        # or Experiment3, or Experiment4
+$ make ExperimentSynthetic   # or ExperimentBeijing, or ExperimentImpute, or ExperimentRecursive
 ```
 
 These experiments will be run through a Python virtual environment that will 
-be automatically created with the required dependencies. For Experiments 3 and 
-4 the results are captured in LaTeX tables that are automatically generated as 
-well.
+be automatically created with the required dependencies. For the imputation 
+experiment the results are captured in LaTeX tables that are automatically 
+generated as well.
 
-The code for Experiment 2 and the Convergence experiment are written in 
-Matlab, so require a Matlab installation to reproduce. See the readme files in 
-the corresponding directories for more information.
+The code for the change point detection Experiment and the convergence 
+experiment are written in Matlab, so require a Matlab installation to 
+reproduce. See the readme files in the corresponding directories for more 
+information.
 
 ## Notes
 
