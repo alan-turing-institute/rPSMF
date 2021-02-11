@@ -235,7 +235,7 @@ class TrackingMixin:
             format="pdf",
             bbox_inches="tight",
             pad_inches=0,
-            metadata=None,
+            metadata={'Creator': None, 'Producer': None, 'CreationDate': None},
         )
 
     def figures_save(
