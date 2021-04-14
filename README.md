@@ -3,18 +3,23 @@
 This repository contains the code to reproduce the experiments in:
 
 [**Akyildiz, van den Burg, Damoulas, Steel - Probabilistic Sequential Matrix 
-Factorization (2019)**](https://arxiv.org/abs/1910.03906)
+Factorization (2021)**](http://proceedings.mlr.press/v130/akyildiz21a.html)
 
 Work that uses the methods described in the paper or the code in this 
 repository should cite the paper, for instance using the following BibTeX 
 entry:
 
 ```bib
-@article{akyildiz2019probabilistic,
-    title={Probabilistic sequential matrix factorization},
+@inproceedings{akyildiz2021probabilistic,
+    title={Probabilistic Sequential Matrix Factorization},
     author={{\"O}mer Deniz Akyildiz and Gerrit J. J. {van den Burg} and Theodoros Damoulas and Mark F. J. Steel},
-    year={2019},
-    journal={arXiv preprint arXiv:1910.03906},
+    booktitle={Proceedings of the 24th International Conference on Artificial Intelligence and Statistics},
+    editor={Banerjee, Arindam and Fukumizu, Kenji},
+    pages={3484--3492},
+    volume={130},
+    year={2021}
+    series={Proceedings of Machine Learning Research},
+    publisher={PMLR},
 }
 ```
 
@@ -31,7 +36,8 @@ model high-dimensional timeseries data that exhibits non-stationary dynamics.
 We also propose a robust variant of the model, called rPSMF, that handles 
 model misspecification and outliers.
 
-See [the paper](https://arxiv.org/abs/1910.03906) for further details.
+See [the paper](http://proceedings.mlr.press/v130/akyildiz21a.html) for 
+further details.
 
 <p align="center">
   <img width="40%" src="./.github/rpsmf.png" alt="Illustration of fitting 
