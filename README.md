@@ -17,7 +17,7 @@ entry:
     editor={Banerjee, Arindam and Fukumizu, Kenji},
     pages={3484--3492},
     volume={130},
-    year={2021}
+    year={2021},
     series={Proceedings of Machine Learning Research},
     publisher={PMLR},
 }
