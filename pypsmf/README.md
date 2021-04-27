@@ -15,5 +15,5 @@ method proposed in:
 If you encounter a problem when using this code or simply want to ask a 
 question, please don't hesitate to [open an issue on 
 GitHub](https://github.com/alan-turing-institute/rPSMF) or send an email to 
-``odakyildiz at turing dot ac dot uk`` and/or ``gvandenburg at turing dot ac 
-dot uk``.
+``odakyildiz at turing dot ac dot uk`` and/or ``gertjanvandenburg at gmail dot 
+com``.
